@@ -1,0 +1,20 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/bg_bar.jpg</file>
+        <file>images/bg_road.jpg</file>
+        <file>images/car_geely.png</file>
+        <file>images/glass.png</file>
+        <file>images/wine_glass.png</file>
+        <file>images/whiskey_glass.png</file>
+        <file>images/whiskey.png</file>
+        <file>images/wine.png</file>
+        <file>images/bottle_beer.png</file>
+        <file>images/bottle_vodka.png</file>
+        <file>images/alkotester.png</file>
+        <file>images/police.png</file>
+        <file>images/hand_cursor.png</file>
+        <file>sounds/menu_sound.wav</file>
+        <file>sounds/naliv_sound.wav</file>
+        <file>sounds/police_sound.wav</file>
+    </qresource>
+</RCC>
