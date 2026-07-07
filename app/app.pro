@@ -8,7 +8,7 @@ QMAKE_PROJECT_DEPTH = 0
 QT += core gui multimedia multimediawidgets
 QT += core gui multimedia
 SOURCES += \
-    alcoholmath.cpp \
+    alcoholengine.cpp \
     barwidget.cpp \
     drivingwidget.cpp \
     main.cpp \
@@ -17,11 +17,14 @@ SOURCES += \
     videocutscenewidget.cpp
 
 HEADERS += \
-    alcoholmath.h \
+    alcoholengine.h \
     barwidget.h \
     drivingwidget.h \
+    itimeprovider.h \
     mainwindow.h \
+    mocktimeprovider.h \
     policewidget.h \
+    realtimeprovider.h \
     videocutscenewidget.h
 
 FORMS += \

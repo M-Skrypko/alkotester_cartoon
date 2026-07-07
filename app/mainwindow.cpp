@@ -11,25 +11,27 @@
 #include <QMessageBox>
 #include <QFile>
 #include <QCoreApplication>
-#include <QTimer>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , playerGender("Мужской")
-    , playerCountry("Беларусь")
-    , playerWeight(90)
-    , consumedAlcoholGrams(0.0)
     , targetWidgetAfterVideo(nullptr)
     , barScreen(nullptr)
     , drivingScreen(nullptr)
     , policeScreen(nullptr)
 {
     ui->setupUi(this);
-
     setWindowTitle("Мультик от Скрипко");
     if (statusBar()) {
         statusBar()->hide();
+    }
+
+    // Инициализация инверсии зависимостей!
+    timeProvider = new RealTimeProvider();
+    gameEngine = new AlcoholEngine(timeProvider, this);
+
+    if (!gameEngine->getLastError().isEmpty()) {
+        QMessageBox::critical(this, "Критическая ошибка", gameEngine->getLastError());
     }
 
     bgAudioOutput = new QAudioOutput(this);
@@ -53,7 +55,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     QWidget *disclaimerScreen = new QWidget(this);
     disclaimerScreen->setStyleSheet("QWidget { background-color: #141414; }");
-
     QVBoxLayout *disclaimerLayout = new QVBoxLayout(disclaimerScreen);
     disclaimerLayout->setAlignment(Qt::AlignCenter);
 
@@ -97,14 +98,12 @@ MainWindow::MainWindow(QWidget *parent)
     startScreen->setStyleSheet(
         "QWidget { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2c3e50, stop:1 #3498db); }"
         );
-
     QWidget *settingsWidget = new QWidget(startScreen);
     settingsWidget->setStyleSheet(
         "QWidget { background-color: rgba(255, 255, 255, 230); border-radius: 15px; padding: 20px; }"
         "QLabel { background: transparent; color: #2c3e50; font-size: 14px; font-weight: bold; }"
         "QComboBox, QSpinBox { background: white; border: 1px solid #bdc3c7; border-radius: 5px; padding: 5px; font-size: 14px; color: black; }"
         );
-
     QVBoxLayout *settingsLayout = new QVBoxLayout(settingsWidget);
 
     QLabel *lblWelcome = new QLabel("🚦 СИМУЛЯТОР ТРЕЗВОГО ВОЖДЕНИЯ 🚦", settingsWidget);
@@ -123,30 +122,10 @@ MainWindow::MainWindow(QWidget *parent)
     QHBoxLayout *countryLayout = new QHBoxLayout();
     QLabel *lblCountry = new QLabel("Страна:", settingsWidget);
     QComboBox *comboCountry = new QComboBox(settingsWidget);
-    comboCountry->addItems({
-        "Беларусь", "Австралия", "Австрия", "Азербайджан", "Албания", "Алжир", "Ангола",
-        "Аргентина", "Армения", "Багамы", "Бангладеш", "Барбадос", "Бахрейн",
-        "Бельгия", "Болгария", "Боливия", "Босния и Герцеговина",
-        "Ботсвана", "Бразилия", "Бруней", "Великобритания", "Венгрия", "Венесуэла",
-        "Вьетнам", "Гайана", "Гана", "Германия", "Греция", "Грузия",
-        "Дания", "Египет", "Замбия", "Зимбабве", "Израиль", "Индия",
-        "Индонезия", "Иордания", "Иран", "Ирландия", "Исландия", "Испания",
-        "Италия", "Йемен", "Казахстан", "Камбоджа", "Камерун", "Канада",
-        "Катар", "Кения", "Кипр", "Китай", "Колумбия", "Кот-д'Ивуар",
-        "Куба", "Кувейт", "Кыргызстан", "Лаос", "Латвия", "Ливан",
-        "Ливия", "Литва", "Люксембург", "Мадагаскар", "Малайзия", "Мальдивы",
-        "Мальта", "Марокко", "Мексика", "Мозамбик", "Молдова", "Монголия",
-        "Мьянма", "Намибия", "Непал", "Нигер", "Нигерия", "Нидерланды",
-        "Новая Зеландия", "Норвегия", "ОАЭ", "Оман", "Пакистан", "Папуа — Новая Гвинея",
-        "Парагвай", "Перу", "Польша", "Португалия", "Россия", "Румыния",
-        "Саудовская Аравия", "Северная Македония", "Сербия", "Словакия", "Словения",
-        "США", "Судан", "Суринам", "Таджикистан", "Таиланд", "Танзания",
-        "Тринидад и Тобаго", "Тунис", "Туркменистан", "Турция", "Уганда", "Узбекистан",
-        "Украина", "Уругвай", "Фиджи", "Филиппины", "Финляндия", "Франция",
-        "Хорватия", "Черногория", "Чехия", "Чили", "Швейцария", "Швеция",
-        "Шри-Ланка", "Эквадор", "Эстония", "Эфиопия", "ЮАР", "Южная Корея",
-        "Ямайка", "Япония"
-    });
+
+    comboCountry->addItems(gameEngine->getAvailableCountries());
+    comboCountry->setCurrentText("Беларусь");
+
     countryLayout->addWidget(lblCountry);
     countryLayout->addWidget(comboCountry);
     settingsLayout->addLayout(countryLayout);
@@ -154,10 +133,8 @@ MainWindow::MainWindow(QWidget *parent)
     QHBoxLayout *weightLayout = new QHBoxLayout();
     QLabel *lblWeight = new QLabel("Ваш вес (кг):", settingsWidget);
     QSpinBox *spinWeight = new QSpinBox(settingsWidget);
-
     spinWeight->setRange(1, 500);
     spinWeight->setValue(90);
-
     weightLayout->addWidget(lblWeight);
     weightLayout->addWidget(spinWeight);
     settingsLayout->addLayout(weightLayout);
@@ -175,24 +152,19 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(btnStart, &QPushButton::clicked, [=]() {
         int currentWeight = spinWeight->value();
-
-
         if (currentWeight < 35 || currentWeight > 240) {
             QMessageBox::StandardButton reply;
             reply = QMessageBox::warning(this, "Предупреждение",
                                          QString("Указанный вес (%1 кг) выходит за рамки среднестатистической нормы.\n"
-                                                 "Это может сильно исказить расчеты алкоголя в крови.\n\n"
-                                                 "Вы уверены, что хотите продолжить с этим весом?").arg(currentWeight),
+                                                 "Это может сильно исказить расчеты.\n\n"
+                                                 "Вы уверены, что хотите продолжить?").arg(currentWeight),
                                          QMessageBox::Yes | QMessageBox::No);
-
             if (reply == QMessageBox::No) {
                 return;
             }
         }
 
-        playerGender = comboGender->currentText();
-        playerCountry = comboCountry->currentText();
-        playerWeight = currentWeight;
+        gameEngine->setProfile(comboGender->currentText(), currentWeight, comboCountry->currentText());
         switchToBar();
     });
 
@@ -209,6 +181,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    delete timeProvider; // Очищаем память
     delete ui;
 }
 
@@ -235,33 +208,39 @@ void MainWindow::resetGameScreens()
     stackedWidget->addWidget(drivingScreen);
     stackedWidget->addWidget(policeScreen);
 
+    // Связи
+    connect(barScreen, &BarWidget::finishedDrinking, gameEngine, &AlcoholEngine::addAlcoholGrams);
     connect(barScreen, &BarWidget::finishedDrinking, this, &MainWindow::switchToDriving);
-    connect(drivingScreen, &DrivingWidget::policePulledOver, this, &MainWindow::switchToPolice);
+
+    // НОВАЯ ЛОГИКА ОСТАНОВКИ:
+    connect(drivingScreen, &DrivingWidget::policePulledOver, this, [=](double hoursElapsed) {
+        timeProvider->advanceTime(hoursElapsed); // Записываем время в таймер
+        gameEngine->generateVerdict();           // Говорим движку: "Считай сейчас!"
+        switchToPolice();                        // Запускаем видео полиции
+    });
+
+    connect(gameEngine, &AlcoholEngine::verdictReady, policeScreen, &PoliceWidget::displayVerdict);
     connect(policeScreen, &PoliceWidget::restartRequested, this, &MainWindow::switchToStart);
 }
 
 void MainWindow::switchToStart()
 {
-    consumedAlcoholGrams = 0.0;
-
+    timeProvider->reset(); // Обнуляем время при рестарте
+    gameEngine->resetData();
     stackedWidget->setCurrentWidget(blackScreen);
     resetGameScreens();
 
     if (bgMusicPlayer) {
         bgMusicPlayer->play();
     }
-
     stackedWidget->setCurrentWidget(startScreen);
 }
 
 void MainWindow::switchToBar()
 {
-    if (bgMusicPlayer) {
-        bgMusicPlayer->stop();
-    }
+    if (bgMusicPlayer) bgMusicPlayer->stop();
 
     QString videoPath = QCoreApplication::applicationDirPath() + "/videos/entrance.MP4";
-
     if (!QFile::exists(videoPath)) {
         QMessageBox::critical(this, "Видео не найдено", "Положите видео по этому пути:\n\n" + videoPath);
         stackedWidget->setCurrentWidget(barScreen);
@@ -269,32 +248,34 @@ void MainWindow::switchToBar()
     }
 
     targetWidgetAfterVideo = barScreen;
-
-    stackedWidget->setCurrentWidget(blackScreen);
-    QCoreApplication::processEvents();
-
     stackedWidget->setCurrentWidget(cutscenePlayer);
     cutscenePlayer->playVideo(videoPath);
 }
 
-void MainWindow::switchToDriving(double alcoholGrams)
+void MainWindow::switchToDriving()
 {
-    consumedAlcoholGrams = alcoholGrams;
-
     QString videoPath = QCoreApplication::applicationDirPath() + "/videos/exit.MP4";
-
     if (!QFile::exists(videoPath)) {
         QMessageBox::critical(this, "Видео не найдено", "Положите видео по этому пути:\n\n" + videoPath);
-        drivingScreen->setAlcoholGrams(alcoholGrams);
+        drivingScreen->setAlcoholGrams(gameEngine->getConsumedGrams());
         stackedWidget->setCurrentWidget(drivingScreen);
         return;
     }
 
     targetWidgetAfterVideo = drivingScreen;
+    stackedWidget->setCurrentWidget(cutscenePlayer);
+    cutscenePlayer->playVideo(videoPath);
+}
 
-    stackedWidget->setCurrentWidget(blackScreen);
-    QCoreApplication::processEvents();
+void MainWindow::switchToPolice()
+{
+    QString videoPath = QCoreApplication::applicationDirPath() + "/videos/police_video.MP4";
+    if (!QFile::exists(videoPath)) {
+        stackedWidget->setCurrentWidget(policeScreen);
+        return;
+    }
 
+    targetWidgetAfterVideo = policeScreen;
     stackedWidget->setCurrentWidget(cutscenePlayer);
     cutscenePlayer->playVideo(videoPath);
 }
@@ -306,58 +287,21 @@ void MainWindow::onVideoFinished()
     QWidget *nextScreen = targetWidgetAfterVideo;
     targetWidgetAfterVideo = nullptr;
 
-    cutscenePlayer->stopVideo();
-    stackedWidget->setCurrentWidget(blackScreen);
-
-    QTimer::singleShot(50, this, [=]() {
-        if (nextScreen == policeScreen) {
-            showPoliceScreen();
-        } else {
-            stackedWidget->setCurrentWidget(nextScreen);
-        }
-
-        if (nextScreen == drivingScreen) {
-            drivingScreen->setAlcoholGrams(consumedAlcoholGrams);
-        }
-    });
-}
-
-void MainWindow::switchToPolice(double timeInHours)
-{
-    lastDrivingTime = timeInHours;
-
-    QString videoPath = QCoreApplication::applicationDirPath() + "/videos/police_video.MP4";
-
-    if (!QFile::exists(videoPath)) {
-        showPoliceScreen();
-        return;
+    if (nextScreen == drivingScreen) {
+        drivingScreen->setAlcoholGrams(gameEngine->getConsumedGrams());
     }
 
-    targetWidgetAfterVideo = policeScreen;
-
-    stackedWidget->setCurrentWidget(blackScreen);
-    QCoreApplication::processEvents();
-
-    stackedWidget->setCurrentWidget(cutscenePlayer);
-    cutscenePlayer->playVideo(videoPath);
+    stackedWidget->setCurrentWidget(nextScreen);
+    cutscenePlayer->stopVideo();
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
-
     if (cutscenePlayer) {
         cutscenePlayer->setGeometry(this->rect());
     }
-
     if (blackScreen) {
         blackScreen->setGeometry(this->rect());
     }
-}
-
-void MainWindow::showPoliceScreen()
-{
-    policeScreen->calculateAndShowResult(
-        playerCountry, playerGender, playerWeight, consumedAlcoholGrams, lastDrivingTime);
-    stackedWidget->setCurrentWidget(policeScreen);
 }

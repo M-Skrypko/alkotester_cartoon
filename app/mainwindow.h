@@ -7,6 +7,8 @@
 #include "barwidget.h"
 #include "drivingwidget.h"
 #include "policewidget.h"
+#include "alcoholengine.h"
+#include "realtimeprovider.h" // Подключаем наш реальный провайдер
 
 class QStackedWidget;
 class VideoCutsceneWidget;
@@ -24,43 +26,34 @@ public:
     ~MainWindow();
 
 protected:
-    // Метод переопределения изменения размера объявлен ТОЛЬКО ОДИН РАЗ
     void resizeEvent(QResizeEvent *event) override;
 
 private slots:
     void onVideoFinished();
     void switchToStart();
     void switchToBar();
-    void switchToDriving(double alcoholGrams);
-    void switchToPolice(double timeInHours);
+    void switchToDriving();
+    void switchToPolice();
 
 private:
     Ui::MainWindow *ui;
 
     QStackedWidget *stackedWidget;
-
-    // Игровые экраны
     BarWidget *barScreen;
     DrivingWidget *drivingScreen;
     PoliceWidget *policeScreen;
     QWidget *startScreen;
     QWidget *blackScreen;
     VideoCutsceneWidget *cutscenePlayer;
-    double lastDrivingTime;
-    void showPoliceScreen();
-    QWidget *targetWidgetAfterVideo;
 
-    // Фоновая музыка
+    QWidget *targetWidgetAfterVideo;
     QMediaPlayer *bgMusicPlayer;
     QAudioOutput *bgAudioOutput;
 
-    // Данные игрока
-    QString playerGender;
-    QString playerCountry;
-    int playerWeight;
-    double consumedAlcoholGrams;
 
-    // Метод сброса
+    RealTimeProvider *timeProvider;
+    AlcoholEngine *gameEngine;
+
     void resetGameScreens();
 };
 

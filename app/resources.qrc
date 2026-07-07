@@ -16,5 +16,7 @@
         <file>sounds/menu_sound.wav</file>
         <file>sounds/naliv_sound.wav</file>
         <file>sounds/police_sound.wav</file>
+        <file>laws.txt</file>
     </qresource>
+    <qresource prefix="/new/prefix1"/>
 </RCC>
