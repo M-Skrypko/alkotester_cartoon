@@ -3,26 +3,26 @@
 
 #include "itimeprovider.h"
 
-class RealTimeProvider : public ITimeProvider {
+class RealTimeProvider final : public ITimeProvider {
 public:
-    RealTimeProvider() : m_elapsedHours(0.0) {}
+    RealTimeProvider() = default;
 
-    double getElapsedHours() const override {
+    [[nodiscard]] double getElapsedHours() const override {
         return m_elapsedHours;
     }
 
-    void advanceTime(double hours) {
+    void advanceTime(double hours) noexcept {
         if (hours > 0.0) {
             m_elapsedHours += hours;
         }
     }
 
-    void reset() {
+    void reset() noexcept {
         m_elapsedHours = 0.0;
     }
 
 private:
-    double m_elapsedHours;
+    double m_elapsedHours{0.0};
 };
 
-#endif // REALTIMEPROVIDER_H
+#endif

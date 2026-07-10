@@ -3,21 +3,20 @@
 
 #include "itimeprovider.h"
 
-class MockTimeProvider : public ITimeProvider {
+class MockTimeProvider final : public ITimeProvider {
 public:
-    MockTimeProvider() : m_fakeHours(0.0) {}
+    MockTimeProvider() = default;
 
-    double getElapsedHours() const override {
+    [[nodiscard]] double getElapsedHours() const override {
         return m_fakeHours;
     }
 
-    // Жестко устанавливаем время симуляции в тестах
-    void setHours(double hours) {
+    void setHours(double hours) noexcept {
         m_fakeHours = hours;
     }
 
 private:
-    double m_fakeHours;
+    double m_fakeHours{0.0};
 };
 
-#endif // MOCKTIMEPROVIDER_H
+#endif

@@ -1,7 +1,11 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "videocutscenewidget.h"
-#include <QStackedWidget>
+#include "barwidget.h"
+#include "drivingwidget.h"
+#include "policewidget.h"
+#include "alcoholengine.h"
+#include "realtimeprovider.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -11,22 +15,18 @@
 #include <QMessageBox>
 #include <QFile>
 #include <QCoreApplication>
+#include <QStatusBar>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
-    , targetWidgetAfterVideo(nullptr)
-    , barScreen(nullptr)
-    , drivingScreen(nullptr)
-    , policeScreen(nullptr)
+    : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
     setWindowTitle("Мультик от Скрипко");
+
     if (statusBar()) {
         statusBar()->hide();
     }
 
-    // Инициализация инверсии зависимостей!
     timeProvider = new RealTimeProvider();
     gameEngine = new AlcoholEngine(timeProvider, this);
 
@@ -46,39 +46,42 @@ MainWindow::MainWindow(QWidget *parent)
     stackedWidget = new QStackedWidget(this);
     setCentralWidget(stackedWidget);
 
-    startScreen = new QWidget(this);
     cutscenePlayer = new VideoCutsceneWidget(this);
+    cutscenePlayer->hide();
     connect(cutscenePlayer, &VideoCutsceneWidget::videoFinished, this, &MainWindow::onVideoFinished);
+
+    startScreen = new QWidget(this);
 
     blackScreen = new QWidget(this);
     blackScreen->setStyleSheet("background-color: black;");
 
-    QWidget *disclaimerScreen = new QWidget(this);
+    auto *disclaimerScreen = new QWidget(this);
     disclaimerScreen->setStyleSheet("QWidget { background-color: #141414; }");
-    QVBoxLayout *disclaimerLayout = new QVBoxLayout(disclaimerScreen);
+    auto *disclaimerLayout = new QVBoxLayout(disclaimerScreen);
     disclaimerLayout->setAlignment(Qt::AlignCenter);
 
-    QWidget *discBox = new QWidget(disclaimerScreen);
+    auto *discBox = new QWidget(disclaimerScreen);
     discBox->setStyleSheet(
         "QWidget { background-color: #1c1c1e; border: 2px solid #d63031; border-radius: 12px; padding: 30px; }"
         "QLabel { background: transparent; }"
         );
-    QVBoxLayout *discBoxLayout = new QVBoxLayout(discBox);
+    auto *discBoxLayout = new QVBoxLayout(discBox);
 
-    QLabel *lblDiscTitle = new QLabel("🔞 ВОЗРАСТНОЙ КОНТРОЛЬ 🔞", discBox);
+    auto *lblDiscTitle = new QLabel("🔞 ВОЗРАСТНОЙ КОНТРОЛЬ 🔞", discBox);
     lblDiscTitle->setStyleSheet("color: #d63031; font-size: 22px; font-weight: bold;");
     lblDiscTitle->setAlignment(Qt::AlignCenter);
 
-    QLabel *lblDiscText = new QLabel("Просмотр строго с 18 лет.\nЧрезмерное употребление алкоголя вредит вашему здоровью.", discBox);
+    auto *lblDiscText = new QLabel("Просмотр строго с 18 лет.\nЧрезмерное употребление алкоголя вредит вашему здоровью.", discBox);
     lblDiscText->setStyleSheet("color: #ffffff; font-size: 16px; font-weight: bold; margin: 20px 0;");
     lblDiscText->setAlignment(Qt::AlignCenter);
 
-    QPushButton *btnConfirmAge = new QPushButton("Мне есть 18 лет (Подтвердить возраст)", discBox);
+    auto *btnConfirmAge = new QPushButton("Мне есть 18 лет (Подтвердить возраст)", discBox);
     btnConfirmAge->setStyleSheet(
         "QPushButton { padding: 12px 35px; font-size: 14px; font-weight: bold; background-color: #d63031; color: white; border-radius: 6px; border: none; }"
         "QPushButton:hover { background-color: #ff7675; }"
         );
-    QPushButton *btnExit = new QPushButton("Выйти", discBox);
+
+    auto *btnExit = new QPushButton("Выйти", discBox);
     btnExit->setStyleSheet(
         "QPushButton { padding: 12px 35px; font-size: 14px; font-weight: bold; background-color: #636e72; color: white; border-radius: 6px; border: none; }"
         "QPushButton:hover { background-color: #b2bec3; }"
@@ -90,80 +93,66 @@ MainWindow::MainWindow(QWidget *parent)
     discBoxLayout->addWidget(btnExit);
     disclaimerLayout->addWidget(discBox);
 
-    connect(btnConfirmAge, &QPushButton::clicked, [=]() {
-        stackedWidget->setCurrentWidget(startScreen);
-    });
+    connect(btnConfirmAge, &QPushButton::clicked, [this]() { stackedWidget->setCurrentWidget(startScreen); });
     connect(btnExit, &QPushButton::clicked, this, &QWidget::close);
 
-    startScreen->setStyleSheet(
-        "QWidget { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2c3e50, stop:1 #3498db); }"
-        );
-    QWidget *settingsWidget = new QWidget(startScreen);
+    startScreen->setStyleSheet("QWidget { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2c3e50, stop:1 #3498db); }");
+
+    auto *settingsWidget = new QWidget(startScreen);
     settingsWidget->setStyleSheet(
         "QWidget { background-color: rgba(255, 255, 255, 230); border-radius: 15px; padding: 20px; }"
         "QLabel { background: transparent; color: #2c3e50; font-size: 14px; font-weight: bold; }"
         "QComboBox, QSpinBox { background: white; border: 1px solid #bdc3c7; border-radius: 5px; padding: 5px; font-size: 14px; color: black; }"
         );
-    QVBoxLayout *settingsLayout = new QVBoxLayout(settingsWidget);
+    auto *settingsLayout = new QVBoxLayout(settingsWidget);
 
-    QLabel *lblWelcome = new QLabel("🚦 СИМУЛЯТОР ТРЕЗВОГО ВОЖДЕНИЯ 🚦", settingsWidget);
+    auto *lblWelcome = new QLabel("🚦 СИМУЛЯТОР ТРЕЗВОГО ВОЖДЕНИЯ 🚦", settingsWidget);
     lblWelcome->setStyleSheet("font-size: 18px; font-weight: bold; color: #c0392b; margin-bottom: 15px;");
     lblWelcome->setAlignment(Qt::AlignCenter);
     settingsLayout->addWidget(lblWelcome);
 
-    QHBoxLayout *genderLayout = new QHBoxLayout();
-    QLabel *lblGender = new QLabel("Ваш пол:", settingsWidget);
-    QComboBox *comboGender = new QComboBox(settingsWidget);
+    auto *comboGender = new QComboBox(settingsWidget);
     comboGender->addItems({"Мужской", "Женский"});
-    genderLayout->addWidget(lblGender);
+    auto *genderLayout = new QHBoxLayout();
+    genderLayout->addWidget(new QLabel("Ваш пол:", settingsWidget));
     genderLayout->addWidget(comboGender);
     settingsLayout->addLayout(genderLayout);
 
-    QHBoxLayout *countryLayout = new QHBoxLayout();
-    QLabel *lblCountry = new QLabel("Страна:", settingsWidget);
-    QComboBox *comboCountry = new QComboBox(settingsWidget);
-
+    auto *comboCountry = new QComboBox(settingsWidget);
     comboCountry->addItems(gameEngine->getAvailableCountries());
     comboCountry->setCurrentText("Беларусь");
-
-    countryLayout->addWidget(lblCountry);
+    auto *countryLayout = new QHBoxLayout();
+    countryLayout->addWidget(new QLabel("Страна:", settingsWidget));
     countryLayout->addWidget(comboCountry);
     settingsLayout->addLayout(countryLayout);
 
-    QHBoxLayout *weightLayout = new QHBoxLayout();
-    QLabel *lblWeight = new QLabel("Ваш вес (кг):", settingsWidget);
-    QSpinBox *spinWeight = new QSpinBox(settingsWidget);
+    auto *spinWeight = new QSpinBox(settingsWidget);
     spinWeight->setRange(1, 500);
     spinWeight->setValue(90);
-    weightLayout->addWidget(lblWeight);
+    auto *weightLayout = new QHBoxLayout();
+    weightLayout->addWidget(new QLabel("Ваш вес (кг):", settingsWidget));
     weightLayout->addWidget(spinWeight);
     settingsLayout->addLayout(weightLayout);
 
-    QPushButton *btnStart = new QPushButton("Сесть за столик в Бар ➡️", settingsWidget);
+    auto *btnStart = new QPushButton("Сесть за столик в Бар ➡️", settingsWidget);
     btnStart->setStyleSheet(
         "QPushButton { padding: 12px; font-size: 15px; font-weight: bold; background-color: #27ae60; color: white; border-radius: 5px; border: none; }"
         "QPushButton:hover { background-color: #2ecc71; }"
         );
     settingsLayout->addWidget(btnStart);
 
-    QVBoxLayout *startMainLayout = new QVBoxLayout(startScreen);
+    auto *startMainLayout = new QVBoxLayout(startScreen);
     startMainLayout->setAlignment(Qt::AlignCenter);
     startMainLayout->addWidget(settingsWidget);
 
     connect(btnStart, &QPushButton::clicked, [=]() {
         int currentWeight = spinWeight->value();
         if (currentWeight < 35 || currentWeight > 240) {
-            QMessageBox::StandardButton reply;
-            reply = QMessageBox::warning(this, "Предупреждение",
-                                         QString("Указанный вес (%1 кг) выходит за рамки среднестатистической нормы.\n"
-                                                 "Это может сильно исказить расчеты.\n\n"
-                                                 "Вы уверены, что хотите продолжить?").arg(currentWeight),
-                                         QMessageBox::Yes | QMessageBox::No);
-            if (reply == QMessageBox::No) {
-                return;
-            }
+            auto reply = QMessageBox::warning(this, "Предупреждение",
+                                              QString("Указанный вес (%1 кг) выходит за рамки нормы.\nВы уверены?").arg(currentWeight),
+                                              QMessageBox::Yes | QMessageBox::No);
+            if (reply == QMessageBox::No) return;
         }
-
         gameEngine->setProfile(comboGender->currentText(), currentWeight, comboCountry->currentText());
         switchToBar();
     });
@@ -171,17 +160,15 @@ MainWindow::MainWindow(QWidget *parent)
     stackedWidget->addWidget(disclaimerScreen);
     stackedWidget->addWidget(startScreen);
     stackedWidget->addWidget(blackScreen);
-    stackedWidget->addWidget(cutscenePlayer);
 
     resetGameScreens();
-
     stackedWidget->setCurrentWidget(disclaimerScreen);
     resize(1024, 600);
 }
 
 MainWindow::~MainWindow()
 {
-    delete timeProvider; // Очищаем память
+    delete timeProvider;
     delete ui;
 }
 
@@ -208,15 +195,13 @@ void MainWindow::resetGameScreens()
     stackedWidget->addWidget(drivingScreen);
     stackedWidget->addWidget(policeScreen);
 
-    // Связи
     connect(barScreen, &BarWidget::finishedDrinking, gameEngine, &AlcoholEngine::addAlcoholGrams);
     connect(barScreen, &BarWidget::finishedDrinking, this, &MainWindow::switchToDriving);
 
-    // НОВАЯ ЛОГИКА ОСТАНОВКИ:
-    connect(drivingScreen, &DrivingWidget::policePulledOver, this, [=](double hoursElapsed) {
-        timeProvider->advanceTime(hoursElapsed); // Записываем время в таймер
-        gameEngine->generateVerdict();           // Говорим движку: "Считай сейчас!"
-        switchToPolice();                        // Запускаем видео полиции
+    connect(drivingScreen, &DrivingWidget::policePulledOver, this, [this](double hoursElapsed) {
+        timeProvider->advanceTime(hoursElapsed);
+        gameEngine->generateVerdict();
+        switchToPolice();
     });
 
     connect(gameEngine, &AlcoholEngine::verdictReady, policeScreen, &PoliceWidget::displayVerdict);
@@ -225,7 +210,7 @@ void MainWindow::resetGameScreens()
 
 void MainWindow::switchToStart()
 {
-    timeProvider->reset(); // Обнуляем время при рестарте
+    timeProvider->reset();
     gameEngine->resetData();
     stackedWidget->setCurrentWidget(blackScreen);
     resetGameScreens();
@@ -238,17 +223,22 @@ void MainWindow::switchToStart()
 
 void MainWindow::switchToBar()
 {
-    if (bgMusicPlayer) bgMusicPlayer->stop();
+    if (bgMusicPlayer) {
+        bgMusicPlayer->stop();
+    }
 
     QString videoPath = QCoreApplication::applicationDirPath() + "/videos/entrance.MP4";
     if (!QFile::exists(videoPath)) {
-        QMessageBox::critical(this, "Видео не найдено", "Положите видео по этому пути:\n\n" + videoPath);
         stackedWidget->setCurrentWidget(barScreen);
         return;
     }
 
+    stackedWidget->setCurrentWidget(blackScreen);
+    QCoreApplication::processEvents();
+
     targetWidgetAfterVideo = barScreen;
-    stackedWidget->setCurrentWidget(cutscenePlayer);
+    cutscenePlayer->raise();
+    cutscenePlayer->show();
     cutscenePlayer->playVideo(videoPath);
 }
 
@@ -256,14 +246,17 @@ void MainWindow::switchToDriving()
 {
     QString videoPath = QCoreApplication::applicationDirPath() + "/videos/exit.MP4";
     if (!QFile::exists(videoPath)) {
-        QMessageBox::critical(this, "Видео не найдено", "Положите видео по этому пути:\n\n" + videoPath);
         drivingScreen->setAlcoholGrams(gameEngine->getConsumedGrams());
         stackedWidget->setCurrentWidget(drivingScreen);
         return;
     }
 
+    stackedWidget->setCurrentWidget(blackScreen);
+    QCoreApplication::processEvents();
+
     targetWidgetAfterVideo = drivingScreen;
-    stackedWidget->setCurrentWidget(cutscenePlayer);
+    cutscenePlayer->raise();
+    cutscenePlayer->show();
     cutscenePlayer->playVideo(videoPath);
 }
 
@@ -275,8 +268,12 @@ void MainWindow::switchToPolice()
         return;
     }
 
+    stackedWidget->setCurrentWidget(blackScreen);
+    QCoreApplication::processEvents();
+
     targetWidgetAfterVideo = policeScreen;
-    stackedWidget->setCurrentWidget(cutscenePlayer);
+    cutscenePlayer->raise();
+    cutscenePlayer->show();
     cutscenePlayer->playVideo(videoPath);
 }
 
@@ -284,7 +281,7 @@ void MainWindow::onVideoFinished()
 {
     if (!targetWidgetAfterVideo) return;
 
-    QWidget *nextScreen = targetWidgetAfterVideo;
+    auto *nextScreen = targetWidgetAfterVideo;
     targetWidgetAfterVideo = nullptr;
 
     if (nextScreen == drivingScreen) {
@@ -292,16 +289,18 @@ void MainWindow::onVideoFinished()
     }
 
     stackedWidget->setCurrentWidget(nextScreen);
+    nextScreen->repaint();
+    QCoreApplication::processEvents();
+
+    cutscenePlayer->hide();
     cutscenePlayer->stopVideo();
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
+
     if (cutscenePlayer) {
         cutscenePlayer->setGeometry(this->rect());
-    }
-    if (blackScreen) {
-        blackScreen->setGeometry(this->rect());
     }
 }

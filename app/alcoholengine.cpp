@@ -1,5 +1,5 @@
 #include "alcoholengine.h"
-#include "itimeprovider.h" // Подключаем интерфейс
+#include "itimeprovider.h"
 #include <QFile>
 #include <QTextStream>
 #include <QStringConverter>
@@ -10,11 +10,10 @@
 AlcoholEngine::AlcoholEngine(ITimeProvider *timeProvider, QObject *parent)
     : QObject(parent), m_timeProvider(timeProvider)
 {
-    resetData();
     initLaws();
 }
 
-void AlcoholEngine::resetData() {
+void AlcoholEngine::resetData() noexcept {
     m_consumedGrams = 0.0;
 }
 
@@ -24,52 +23,50 @@ void AlcoholEngine::setProfile(const QString &gender, int weight, const QString 
     m_country = country;
 }
 
-double AlcoholEngine::getConsumedGrams() const {
+double AlcoholEngine::getConsumedGrams() const noexcept {
     return m_consumedGrams;
 }
 
 QVector<QString> AlcoholEngine::getAvailableCountries() const {
-    QVector<QString> countries = m_laws.keys().toVector();
+    auto countries = m_laws.keys().toVector();
     std::sort(countries.begin(), countries.end());
     return countries;
 }
 
-QString AlcoholEngine::getLastError() const {
+QString AlcoholEngine::getLastError() const noexcept {
     return m_lastError;
 }
 
-void AlcoholEngine::addAlcoholGrams(double grams) {
+void AlcoholEngine::addAlcoholGrams(double grams) noexcept {
     m_consumedGrams += grams;
 }
 
-// Формула Видмарка теперь запрашивает время у интерфейса
 double AlcoholEngine::calculateBAC() const {
-    double hours = m_timeProvider->getElapsedHours();
+    if (!m_timeProvider || m_weight <= 30) {
+        return 0.0;
+    }
 
-    if (m_weight <= 30) return 0.0;
+    const double hours = m_timeProvider->getElapsedHours();
+    const double r = (m_gender == "Мужской") ? 0.7 : 0.6;
+    constexpr double b = 0.15;
 
-    double r = (m_gender == "Мужской") ? 0.7 : 0.6;
-    double b = 0.15;
-    double C = (m_consumedGrams / (m_weight * r)) - (b * hours);
+    const double C = (m_consumedGrams / (m_weight * r)) - (b * hours);
 
-    return std::max(0.0, C); // Предотвращение отрицательных промилле
+    return std::max(0.0, C);
 }
 
 void AlcoholEngine::generateVerdict() {
-    double bac = calculateBAC();
-    CountryLaw currentLaw = m_laws.value(m_country, {0.499, {{99.0, "Нарушение закона.", 1}}});
+    const double bac = calculateBAC();
+    const CountryLaw currentLaw = m_laws.value(m_country, {0.499, {{99.0, "Нарушение закона.", 1}}});
 
-    QString currentLawText;
+    QString currentLawText = "Закон не нарушен. Счастливого пути!";
     int currentOutcome = 0;
 
-    if (bac <= currentLaw.legalLimit) {
-        currentLawText = "Закон не нарушен. Счастливого пути!";
-        currentOutcome = 0;
-    } else {
-        for (const PunishmentTier &tier : currentLaw.tiers) {
-            if (bac <= tier.upToLimit) {
-                currentLawText = tier.text;
-                currentOutcome = tier.outcomeType;
+    if (bac > currentLaw.legalLimit) {
+        for (const auto& [upToLimit, text, outcomeType] : currentLaw.tiers) {
+            if (bac <= upToLimit) {
+                currentLawText = text;
+                currentOutcome = outcomeType;
                 break;
             }
         }
@@ -92,31 +89,23 @@ void AlcoholEngine::initLaws() {
     in.setEncoding(QStringConverter::Utf8);
 
     while (!in.atEnd()) {
-        QString line = in.readLine().trimmed();
-        if (line.isEmpty() || line.startsWith("#")) continue;
+        const QString line = in.readLine().trimmed();
 
-        QStringList parts = line.split('|');
+        if (line.isEmpty() || line.startsWith(QLatin1Char('#'))) continue;
+
+        const auto parts = line.split(QLatin1Char('|'));
         if (parts.size() < 5) continue;
 
         CountryLaw law;
-        QString countryName = parts[0].trimmed();
+        const QString countryName = parts[0].trimmed();
         law.legalLimit = parts[1].toDouble();
 
-        PunishmentTier tier1;
-        tier1.upToLimit = parts[2].toDouble();
-        tier1.text = parts[3].trimmed();
-        tier1.outcomeType = parts[4].toInt();
-        law.tiers.append(tier1);
+        law.tiers.append({parts[2].toDouble(), parts[3].trimmed(), parts[4].toInt()});
 
         if (parts.size() >= 8) {
-            PunishmentTier tier2;
-            tier2.upToLimit = parts[5].toDouble();
-            tier2.text = parts[6].trimmed();
-            tier2.outcomeType = parts[7].toInt();
-            law.tiers.append(tier2);
+            law.tiers.append({parts[5].toDouble(), parts[6].trimmed(), parts[7].toInt()});
         }
 
         m_laws.insert(countryName, law);
     }
-    file.close();
 }

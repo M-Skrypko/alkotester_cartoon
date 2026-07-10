@@ -8,16 +8,10 @@
 
 DrivingWidget::DrivingWidget(QWidget *parent)
     : QWidget(parent)
-    , roadOffset(0.0)
-    , timeLeft(10)
-    , virtualTimeHours(0.0)
-    , policeAppearing(false)
-    , policeX(0.0)
-    , carX(120.0)
-    , speedMultiplier(14.0)
 {
     animationTimer = new QTimer(this);
     connect(animationTimer, &QTimer::timeout, this, &DrivingWidget::updateAnimation);
+
     rideDurationTimer = new QTimer(this);
     connect(rideDurationTimer, &QTimer::timeout, this, &DrivingWidget::handleTimeOut);
 
@@ -54,22 +48,20 @@ void DrivingWidget::startSimulation(int durationSeconds) {
 }
 
 void DrivingWidget::updateAnimation() {
-    roadOffset = roadOffset + speedMultiplier;
+    roadOffset += speedMultiplier;
     if (roadOffset >= width()) {
         roadOffset = 0;
     }
 
     if (!policeAppearing) {
-        virtualTimeHours = virtualTimeHours + 0.0032;
-    }
-
-    if (policeAppearing) {
+        virtualTimeHours += 0.0032;
+    } else {
         double targetPoliceX = width() - 320.0;
         double targetCarX = targetPoliceX - 230.0;
 
-        speedMultiplier = speedMultiplier + (0.0 - speedMultiplier) * 0.05;
-        policeX = policeX + (targetPoliceX - policeX) * 0.05;
-        carX = carX + (targetCarX - carX) * 0.04;
+        speedMultiplier += (0.0 - speedMultiplier) * 0.05;
+        policeX += (targetPoliceX - policeX) * 0.05;
+        carX += (targetCarX - carX) * 0.04;
 
         if (std::abs(policeX - targetPoliceX) < 2.0) {
             if (speedMultiplier < 0.2) {
@@ -90,7 +82,7 @@ void DrivingWidget::updateAnimation() {
 
 void DrivingWidget::handleTimeOut() {
     if (!policeAppearing) {
-        timeLeft = timeLeft - 1;
+        timeLeft -= 1;
 
         if (timeLeft == 2) {
             if (!sirenSound->isPlaying()) {
@@ -170,6 +162,5 @@ void DrivingWidget::setAlcoholGrams(double grams)
     }
 
     int randomRealSeconds = QRandomGenerator::global()->bounded(minSeconds, maxSeconds + 1);
-
     startSimulation(randomRealSeconds);
 }

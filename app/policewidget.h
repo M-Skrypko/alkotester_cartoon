@@ -8,7 +8,7 @@
 #include <QPropertyAnimation>
 #include <QPushButton>
 #include <QSoundEffect>
-#include <QShowEvent> // Добавлено для отслеживания показа экрана
+#include <QShowEvent>
 
 class PoliceWidget : public QWidget
 {
@@ -18,44 +18,40 @@ public:
     void playSiren();
     void stopSiren();
 
+public slots:
+    void restartGame();
+    void displayVerdict(double bac, const QString &lawText, int outcomeType);
+
 signals:
     void restartRequested();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
-    void showEvent(QShowEvent *event) override; // Новая логика старта анимации
-
-private slots:
-    void updateScanner();
-    void startFinalScenario();
-
-public slots:
-    void restartGame();
-    void displayVerdict(double bac, const QString &lawText, int outcomeType);
+    void showEvent(QShowEvent *event) override;
 
 private:
-    double resultPromille;
-    double displayedPromille;
-    QString currentLawText;
-    int currentOutcome;
-
-    QLabel *lblAlcoResult;
-    QLabel *lblVerdict;
-    QPushButton *btnAction;
-
-    QSoundEffect *sirenSound;
+    void updateScanner();
+    void startFinalScenario();
     void startSirenWithDelay();
-    QTimer *scanTimer;
-    QWidget *infoCard;
-    QLabel *lblResultText;
-    QPushButton *btnRestart;
 
-    QWidget *finalOverlay;
-    QLabel *lblFinalText;
-    QPushButton *btnFinalRestart;
+    double resultPromille{0.0};
+    double displayedPromille{0.0};
+    QString currentLawText;
+    int currentOutcome{0};
 
-    QGraphicsOpacityEffect *fadeEffect;
+    QLabel *lblAlcoResult{nullptr};
+    QLabel *lblVerdict{nullptr};
+    QPushButton *btnAction{nullptr};
+    QSoundEffect *sirenSound{nullptr};
+    QTimer *scanTimer{nullptr};
+    QWidget *infoCard{nullptr};
+    QLabel *lblResultText{nullptr};
+    QPushButton *btnRestart{nullptr};
+    QWidget *finalOverlay{nullptr};
+    QLabel *lblFinalText{nullptr};
+    QPushButton *btnFinalRestart{nullptr};
+    QGraphicsOpacityEffect *fadeEffect{nullptr};
 };
 
-#endif // POLICEWIDGET_H
+#endif

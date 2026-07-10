@@ -8,6 +8,7 @@
 #include <QRect>
 #include <QMouseEvent>
 #include <QSoundEffect>
+#include <QList>
 
 struct DrinkItem {
     QString name;
@@ -36,23 +37,23 @@ protected:
     void mousePressEvent(QMouseEvent *event) override;
     void enterEvent(QEnterEvent *event) override;
     void leaveEvent(QEvent *event) override;
-private slots:
+
+private:
     void startPouring();
     void updatePouring();
 
-private:
     QList<DrinkItem> drinks;
-    int hoveredBottleIndex;
-    int selectedBottleIndex;
+    int hoveredBottleIndex{-1};
+    int selectedBottleIndex{-1};
 
-    QPushButton *btnPour;
-    QPushButton *btnGo;
+    QPushButton *btnPour{nullptr};
+    QPushButton *btnGo{nullptr};
 
-    QTimer *pourTimer;
-    int pourHeight;
-    int maxPourHeight;
+    QTimer *pourTimer{nullptr};
+    int pourHeight{0};
+    int maxPourHeight{120};
 
-    QSoundEffect *pourSound;
-    double totalPureAlcoholMl;
+    QSoundEffect *pourSound{nullptr};
+    double totalPureAlcoholMl{0.0};
 };
-#endif // BARWIDGET_H
+#endif

@@ -12,7 +12,7 @@
 #include <QSoundEffect>
 
 BarWidget::BarWidget(QWidget *parent)
-    : QWidget(parent), hoveredBottleIndex(-1), selectedBottleIndex(-1), pourHeight(0), maxPourHeight(120), totalPureAlcoholMl(0.0)
+    : QWidget(parent)
 {
     setMouseTracking(true);
 
@@ -53,7 +53,7 @@ BarWidget::BarWidget(QWidget *parent)
     mainLayout->addLayout(actionLayout);
 
     connect(btnPour, &QPushButton::clicked, this, &BarWidget::startPouring);
-    connect(btnGo, &QPushButton::clicked, [=]() { emit finishedDrinking(totalPureAlcoholMl * 0.789); });
+    connect(btnGo, &QPushButton::clicked, this, [=]() { emit finishedDrinking(totalPureAlcoholMl * 0.789); });
 
     QPixmap handPixmap(":/images/hand_cursor.png");
     QPixmap scaledPixmap = handPixmap.scaled(100, 100, Qt::KeepAspectRatio, Qt::SmoothTransformation);
@@ -85,14 +85,11 @@ void BarWidget::mouseMoveEvent(QMouseEvent *event) {
     hoveredBottleIndex = -1;
 
     if (!pourTimer->isActive()) {
-        int i = 0;
-        bool found = false;
-        while (i < drinks.size() && !found) {
-            if (drinks.at(i).boundingBox.contains(event->pos())) {
+        for (int i = 0; i < drinks.size(); ++i) {
+            if (drinks[i].boundingBox.contains(event->pos())) {
                 hoveredBottleIndex = i;
-                found = true;
+                break;
             }
-            i = i + 1;
         }
     }
 
@@ -111,25 +108,22 @@ void BarWidget::mousePressEvent(QMouseEvent *event) {
         return;
     }
 
-    int i = 0;
-    bool found = false;
-    while (i < drinks.size() && !found) {
-        if (drinks.at(i).boundingBox.contains(event->pos())) {
+    for (int i = 0; i < drinks.size(); ++i) {
+        if (drinks[i].boundingBox.contains(event->pos())) {
             selectedBottleIndex = i;
             pourHeight = 0;
             btnPour->setText("Налить 🍾");
             btnPour->setEnabled(true);
             update();
-            found = true;
+            break;
         }
-        i = i + 1;
     }
 }
 
 void BarWidget::startPouring() {
     if (btnPour->text() == "Выпить 🍻") {
         if (selectedBottleIndex != -1) {
-            totalPureAlcoholMl = totalPureAlcoholMl + (drinks.at(selectedBottleIndex).volumeMl * (drinks.at(selectedBottleIndex).abvPercent / 100.0));
+            totalPureAlcoholMl += (drinks[selectedBottleIndex].volumeMl * (drinks[selectedBottleIndex].abvPercent / 100.0));
         }
         pourHeight = 0;
         selectedBottleIndex = -1;
@@ -149,14 +143,13 @@ void BarWidget::startPouring() {
 
 void BarWidget::updatePouring() {
     if (pourHeight < maxPourHeight) {
-        pourHeight = pourHeight + 3;
+        pourHeight += 3;
 
         if (pourHeight >= 20) {
             if (!pourSound->isPlaying()) {
                 pourSound->play();
             }
         }
-
         update();
     }
     else {
@@ -196,15 +189,14 @@ void BarWidget::paintEvent(QPaintEvent *event) {
     int currentX = static_cast<int>(150 * scaleX);
     int spacing = static_cast<int>(35 * scaleX);
 
-    int i = 0;
-    while (i < drinks.size()) {
+    for (int i = 0; i < drinks.size(); ++i) {
         int bW = 55;
         int bH = 150;
 
-        if (drinks.at(i).name == "Вино") { bW = 128; bH = 165; }
-        else if (drinks.at(i).name == "Виски") { bW = 120; bH = 135; }
-        else if (drinks.at(i).name == "Пиво") { bW = 52; bH = 125; }
-        else if (drinks.at(i).name == "Водка") { bW = 110; bH = 160; }
+        if (drinks[i].name == "Вино") { bW = 128; bH = 165; }
+        else if (drinks[i].name == "Виски") { bW = 120; bH = 135; }
+        else if (drinks[i].name == "Пиво") { bW = 52; bH = 125; }
+        else if (drinks[i].name == "Водка") { bW = 110; bH = 160; }
 
         bW = static_cast<int>(bW * scaleX);
         bH = static_cast<int>(bH * scaleY);
@@ -218,8 +210,8 @@ void BarWidget::paintEvent(QPaintEvent *event) {
             if (pourTimer->isActive()) {
                 int baseGlassW = 160;
                 int baseGlassX = 620;
-                if (drinks.at(i).name == "Пиво") { baseGlassW = 180; baseGlassX = 600; }
-                else if (drinks.at(i).name == "Вино") { baseGlassW = 160; baseGlassX = 620; }
+                if (drinks[i].name == "Пиво") { baseGlassW = 180; baseGlassX = 600; }
+                else if (drinks[i].name == "Вино") { baseGlassW = 160; baseGlassX = 620; }
 
                 int targetGlassX = baseGlassX * scaleX;
                 int streamX = targetGlassX + (83 * scaleX);
@@ -234,16 +226,16 @@ void BarWidget::paintEvent(QPaintEvent *event) {
                 painter.save();
                 painter.translate(animX + bW / 2.0, animY + bH / 2.0);
                 painter.rotate(angle);
-                painter.drawPixmap(-bW / 2, -bH / 2, bW, bH, drinks.at(i).bottlePixmap);
+                painter.drawPixmap(-bW / 2, -bH / 2, bW, bH, drinks[i].bottlePixmap);
                 painter.restore();
 
                 if (ease >= 1.0) {
                     if (pourHeight < maxPourHeight) {
                         painter.save();
                         QLinearGradient streamGrad(streamX, targetY, streamX + (8 * scaleX), targetY);
-                        streamGrad.setColorAt(0, drinks.at(i).liquidColor.darker(110));
+                        streamGrad.setColorAt(0, drinks[i].liquidColor.darker(110));
                         streamGrad.setColorAt(0.5, Qt::white);
-                        streamGrad.setColorAt(1, drinks.at(i).liquidColor.darker(110));
+                        streamGrad.setColorAt(1, drinks[i].liquidColor.darker(110));
 
                         painter.setPen(Qt::NoPen);
                         painter.setBrush(streamGrad);
@@ -258,7 +250,7 @@ void BarWidget::paintEvent(QPaintEvent *event) {
                 }
             }
             else {
-                painter.drawPixmap(bX, bY, bW, bH, drinks.at(i).bottlePixmap);
+                painter.drawPixmap(bX, bY, bW, bH, drinks[i].bottlePixmap);
 
                 painter.save();
                 QPen selectPen(QColor(255, 215, 0, 220), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
@@ -269,7 +261,7 @@ void BarWidget::paintEvent(QPaintEvent *event) {
             }
         }
         else {
-            painter.drawPixmap(bX, bY, bW, bH, drinks.at(i).bottlePixmap);
+            painter.drawPixmap(bX, bY, bW, bH, drinks[i].bottlePixmap);
 
             if (i == hoveredBottleIndex) {
                 painter.save();
@@ -280,8 +272,7 @@ void BarWidget::paintEvent(QPaintEvent *event) {
             }
         }
 
-        currentX = currentX + bW + spacing;
-        i = i + 1;
+        currentX += bW + spacing;
     }
 
     if (selectedBottleIndex != -1) {
@@ -401,7 +392,6 @@ void BarWidget::paintEvent(QPaintEvent *event) {
                 int foamHeight = 16 * scaleY;
                 int foamTopY = qMax(liquidTopY, glassY + static_cast<int>(25 * scaleY));
 
-
                 QLinearGradient foamGrad(0, foamTopY - foamHeight, 0, foamTopY);
                 foamGrad.setColorAt(0.0, QColor(255, 255, 255, 245));
                 foamGrad.setColorAt(0.6, QColor(252, 246, 228, 240));
@@ -421,13 +411,11 @@ void BarWidget::enterEvent(QEnterEvent *event)
     QCursor handCursor(handPixmap.scaled(95, 95, Qt::KeepAspectRatio, Qt::SmoothTransformation), 10, 5);
 
     QApplication::setOverrideCursor(handCursor);
-
     QWidget::enterEvent(event);
 }
 
 void BarWidget::leaveEvent(QEvent *event)
 {
     QApplication::restoreOverrideCursor();
-
     QWidget::leaveEvent(event);
 }

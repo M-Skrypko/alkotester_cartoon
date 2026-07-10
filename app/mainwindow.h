@@ -1,16 +1,15 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#pragma once
 
 #include <QMainWindow>
 #include <QMediaPlayer>
 #include <QAudioOutput>
-#include "barwidget.h"
-#include "drivingwidget.h"
-#include "policewidget.h"
-#include "alcoholengine.h"
-#include "realtimeprovider.h" // Подключаем наш реальный провайдер
+#include <QStackedWidget>
 
-class QStackedWidget;
+class BarWidget;
+class DrivingWidget;
+class PoliceWidget;
+class AlcoholEngine;
+class RealTimeProvider;
 class VideoCutsceneWidget;
 
 QT_BEGIN_NAMESPACE
@@ -22,8 +21,8 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
-    ~MainWindow();
+    explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow() override;
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
@@ -36,25 +35,23 @@ private slots:
     void switchToPolice();
 
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow *ui{nullptr};
 
-    QStackedWidget *stackedWidget;
-    BarWidget *barScreen;
-    DrivingWidget *drivingScreen;
-    PoliceWidget *policeScreen;
-    QWidget *startScreen;
-    QWidget *blackScreen;
-    VideoCutsceneWidget *cutscenePlayer;
+    QStackedWidget *stackedWidget{nullptr};
+    BarWidget *barScreen{nullptr};
+    DrivingWidget *drivingScreen{nullptr};
+    PoliceWidget *policeScreen{nullptr};
+    QWidget *startScreen{nullptr};
+    QWidget *blackScreen{nullptr};
+    VideoCutsceneWidget *cutscenePlayer{nullptr};
 
-    QWidget *targetWidgetAfterVideo;
-    QMediaPlayer *bgMusicPlayer;
-    QAudioOutput *bgAudioOutput;
+    QWidget *targetWidgetAfterVideo{nullptr};
 
+    QMediaPlayer *bgMusicPlayer{nullptr};
+    QAudioOutput *bgAudioOutput{nullptr};
 
-    RealTimeProvider *timeProvider;
-    AlcoholEngine *gameEngine;
+    RealTimeProvider *timeProvider{nullptr};
+    AlcoholEngine *gameEngine{nullptr};
 
     void resetGameScreens();
 };
-
-#endif // MAINWINDOW_H

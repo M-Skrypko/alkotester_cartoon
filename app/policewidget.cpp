@@ -6,7 +6,7 @@
 #include <QGraphicsOpacityEffect>
 
 PoliceWidget::PoliceWidget(QWidget *parent)
-    : QWidget(parent), resultPromille(0.0), displayedPromille(0.0), currentOutcome(0)
+    : QWidget(parent)
 {
     sirenSound = new QSoundEffect(this);
     sirenSound->setSource(QUrl::fromLocalFile(":/sounds/police_sound.mp3"));
@@ -60,7 +60,6 @@ PoliceWidget::PoliceWidget(QWidget *parent)
     connect(btnFinalRestart, &QPushButton::clicked, this, &PoliceWidget::restartGame);
 }
 
-// Прием данных от Движка. Здесь мы только СОХРАНЯЕМ расчеты, но не запускаем анимацию
 void PoliceWidget::displayVerdict(double bac, const QString &lawText, int outcomeType)
 {
     resultPromille = bac;
@@ -91,11 +90,9 @@ void PoliceWidget::displayVerdict(double bac, const QString &lawText, int outcom
     btnAction->hide();
 }
 
-// НОВАЯ ЛОГИКА: Анимация начинается строго в момент, когда экран открылся после видео
 void PoliceWidget::showEvent(QShowEvent *event) {
     QWidget::showEvent(event);
 
-    // Убеждаемся, что вердикт загружен, и таймер еще не отработал
     if (!currentLawText.isEmpty() && btnAction->isHidden() && !scanTimer->isActive()) {
         scanTimer->start(40);
     }

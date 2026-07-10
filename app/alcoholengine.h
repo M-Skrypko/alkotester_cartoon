@@ -6,7 +6,7 @@
 #include <QMap>
 #include <QVector>
 
-class ITimeProvider; // Объявляем, что такой класс существует
+class ITimeProvider;
 
 struct PunishmentTier {
     double upToLimit;
@@ -22,20 +22,17 @@ struct CountryLaw {
 class AlcoholEngine : public QObject {
     Q_OBJECT
 public:
-    // Теперь движок рождается только если ему дать провайдер времени!
     explicit AlcoholEngine(ITimeProvider *timeProvider, QObject *parent = nullptr);
 
     void setProfile(const QString &gender, int weight, const QString &country);
 
-    double getConsumedGrams() const;
-    QVector<QString> getAvailableCountries() const;
-    QString getLastError() const;
+    [[nodiscard]] double getConsumedGrams() const noexcept;
+    [[nodiscard]] QVector<QString> getAvailableCountries() const;
+    [[nodiscard]] QString getLastError() const noexcept;
 
 public slots:
-    void resetData();
-    void addAlcoholGrams(double grams);
-
-    // Метод, который генерирует результат на основе текущего времени
+    void resetData() noexcept;
+    void addAlcoholGrams(double grams) noexcept;
     void generateVerdict();
 
 signals:
@@ -44,15 +41,15 @@ signals:
 private:
     QString m_gender;
     QString m_country;
-    int m_weight;
-    double m_consumedGrams;
+    int m_weight{0};
+    double m_consumedGrams{0.0};
 
-    ITimeProvider *m_timeProvider; // Храним зависимость
+    ITimeProvider *m_timeProvider{nullptr};
     QMap<QString, CountryLaw> m_laws;
     QString m_lastError;
 
     void initLaws();
-    double calculateBAC() const;
+    [[nodiscard]] double calculateBAC() const;
 };
 
-#endif // ALCOHOLENGINE_H
+#endif

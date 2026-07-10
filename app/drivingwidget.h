@@ -4,39 +4,38 @@
 #include <QWidget>
 #include <QTimer>
 #include <QSoundEffect>
+
 class DrivingWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    QSoundEffect *sirenSound;
     explicit DrivingWidget(QWidget *parent = nullptr);
     void startSimulation(int durationSeconds);
     void setAlcoholGrams(double grams);
+    QSoundEffect *sirenSound{nullptr};
 
 signals:
-
     void policePulledOver(double timeInHours);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
     void showEvent(QShowEvent *event) override;
 
-private slots:
+private:
     void updateAnimation();
     void handleTimeOut();
 
-private:
-    QTimer *animationTimer;
-    QTimer *rideDurationTimer;
-double speedMultiplier;
-    int roadOffset;
-    int timeLeft;
-    double virtualTimeHours;
+    QTimer *animationTimer{nullptr};
+    QTimer *rideDurationTimer{nullptr};
+    double speedMultiplier{14.0};
+    int roadOffset{0};
+    int timeLeft{10};
+    double virtualTimeHours{0.0};
 
-    bool policeAppearing;
-    int policeX;
-    int carX;
+    bool policeAppearing{false};
+    int policeX{0};
+    int carX{120};
 };
 
-#endif // DRIVINGWIDGET_H
+#endif
